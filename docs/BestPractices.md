@@ -1,12 +1,32 @@
 # Security Best Practices
 
+## TL;DR / ToC
+
+### Crypto
+1. [Perform Algorith Verification](#1-perform-algorithm-verification)
+2. [Use Appropriate Algorithms](#2-use-appropriate-algorithms) and/or Public/Private keys where possible.
+3. [Validate All Cryptographic Operations](#3-validate-all-cryptographic-operations)
+4. [Validate Cryptographic Inputs](#4-validate-cryptographic-inputs)
+5. [Ensure Cryptographic Keys Have Sufficient Entropy](#5-ensure-cryptographic-keys-have-sufficient-entropy) or just use strong RSA Keys.
+6. [Avoid Compression of Encryption Inputs](#6-avoid-compression-of-encryption-inputs)  
+7. [Use UTF-8](#7-use-utf-8) - It's now the standard, so just unify around UTF-8.
+
+### Validate ALL THE THINGS 
+8. [Validate Issuer and Subject](#8-validate-issuer-and-subject)
+9. [Use and Validate Audience](#9-use-and-validate-audience) - Ensure the token you're given is the one you needed.
+10. [Do Not Trust Received Claims](#10-do-not-trust-received-claims) - JWT Claims are inputs. Sanitize your inputs!
+11. [Use Explicit Typing](#11-use-explicit-typing) - Limit your scope of `typ`, and enforce it where possible.
+12. [Use Mutually Exclusive Validation Rules for Different Kinds of JWTs](#12-use-mutually-exclusive-validation-rules-for-different-kinds-of-jwts)
+
+
+
 Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with additional commentary added where it would make more sense or make the point clearer.
 
-1.  Perform Algorithm Verification
+## 1. Perform Algorithm Verification
 
  Libraries MUST enable the caller to specify a supported set of algorithms and MUST NOT use any other algorithms when performing cryptographic operations.  The library MUST ensure that the "alg" or "enc" header specifies the same algorithm that is used for the cryptographic operation.  Moreover, each key MUST be used with exactly one algorithm, and this MUST be checked when the cryptographic operation is performed.
 
-2.  Use Appropriate Algorithms
+## 2. Use Appropriate Algorithms
 
  As Section 5.2 of [RFC7515] says, "it is an application decision which algorithms may be used in a given context.  Even if a JWS can be successfully validated, unless the algorithm(s) used in the JWS are acceptable to the application, it SHOULD consider the JWS to be invalid."
 
@@ -18,47 +38,47 @@ Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with addit
  * Avoid all RSA-PKCS1 v1.5 encryption algorithms ([RFC8017], Section 7.2), preferring RSAES-OAEP ([RFC8017], Section 7.1).
  * Elliptic Curve Digital Signature Algorithm (ECDSA) signatures [ANSI-X962-2005] require a unique random value for every message that is signed. If even just a few bits of the random value are predictable across multiple messages, then the security of the signature scheme may be compromised. In the worst case, the private key may be recoverable by an attacker. To counter these attacks, JWT libraries SHOULD implement ECDSA using the deterministic approach defined in [RFC6979]. This approach is completely compatible with existing ECDSA verifiers and so can be implemented without new algorithm identifiers being required.
 
-3. Validate All Cryptographic Operations
+## 3. Validate All Cryptographic Operations
 
  All cryptographic operations used in the JWT MUST be validated and the entire JWT MUST be rejected if any of them fail to validate. This is true not only of JWTs with a single set of Header Parameters but also for Nested JWTs in which both outer and inner operations MUST be validated using the keys and algorithms supplied by the application.
- 
-4. Validate Cryptographic Inputs
+
+## 4. Validate Cryptographic Inputs
 
  Some cryptographic operations, such as Elliptic Curve Diffie-Hellman key agreement ("ECDH-ES"), take inputs that may contain invalid values. This includes points not on the specified elliptic curve or other invalid points (e.g., [Valenta], Section 7.1). The JWS/JWE library itself must validate these inputs before using them, or it must use underlying cryptographic libraries that do so (or both!).
  Elliptic Curve Diffie-Hellman Ephemeral Static (ECDH-ES) ephemeral public key (epk) inputs should be validated according to the recipient's chosen elliptic curve. For the NIST prime-order curves P-256, P-384, and P-521, validation MUST be performed according to Section 5.6.2.3.4 (ECC Partial Public-Key Validation Routine) of "Recommendation for Pair-Wise Key-Establishment Schemes Using Discrete Logarithm Cryptography" [nist-sp-800-56a-r3]. If the "X25519" or "X448" [RFC8037] algorithms are used, then the security considerations in [RFC8037] apply.
 
-5. Ensure Cryptographic Keys Have Sufficient Entropy
+## 5. Ensure Cryptographic Keys Have Sufficient Entropy
 
  The Key Entropy and Random Values advice in Section 10.1 of [RFC7515] and the Password Considerations in Section 8.8 of [RFC7518] MUST be followed. In particular, human-memorizable passwords MUST NOT be directly used as the key to a keyed-MAC algorithm such as "HS256". Moreover, passwords should only be used to perform key encryption, rather than content encryption, as described in Section 4.8 of [RFC7518]. Note that even when used for key encryption, password- based encryption is still subject to brute-force attacks.
 
-6. Avoid Compression of Encryption Inputs
+## 6. Avoid Compression of Encryption Inputs
 
  Compression of data SHOULD NOT be done before encryption, because such compressed data often reveals information about the plaintext.
 
-7. Use UTF-8
+## 7. Use UTF-8
 
  [RFC7515], [RFC7516], and [RFC7519] all specify that UTF-8 be used for encoding and decoding JSON used in Header Parameters and JWT Claims Sets. This is also in line with the latest JSON specification [RFC8259]. Implementations and applications MUST do this and not use or admit the use of other Unicode encodings for these purposes.
 
-8. Validate Issuer and Subject
+## 8. Validate Issuer and Subject
 
  When a JWT contains an "iss" (issuer) claim, the application MUST validate that the cryptographic keys used for the cryptographic operations in the JWT belong to the issuer. If they do not, the application MUST reject the JWT.
 
  The means of determining the keys owned by an issuer is application- specific. As one example, OpenID Connect [OpenID.Core] issuer values are "https" URLs that reference a JSON metadata document that contains a "jwks_uri" value that is an "https" URL from which the issuer's keys are retrieved as a JWK Set [RFC7517]. This same mechanism is used by [RFC8414]. Other applications may use different means of binding keys to issuers.
 
  Similarly, when the JWT contains a "sub" (subject) claim, the application MUST validate that the subject value corresponds to a valid subject and/or issuer-subject pair at the application. This may include confirming that the issuer is trusted by the application. If the issuer, subject, or the pair are invalid, the application MUST reject the JWT.
-9. Use and Validate Audience
+## 9. Use and Validate Audience
 
  If the same issuer can issue JWTs that are intended for use by more than one relying party or application, the JWT MUST contain an "aud" (audience) claim that can be used to determine whether the JWT is being used by an intended party or was substituted by an attacker at an unintended party.
 
  In such cases, the relying party or application MUST validate the audience value, and if the audience value is not present or not associated with the recipient, it MUST reject the JWT.
 
-10. Do Not Trust Received Claims
+## 10. Do Not Trust Received Claims
 
  The "kid" (key ID) header is used by the relying application to perform key lookup. Applications should ensure that this does not create SQL or LDAP injection vulnerabilities by validating and/or sanitizing the received value.
 
  Similarly, blindly following a "jku" (JWK set URL) or "x5u" (X.509 URL) header, which may contain an arbitrary URL, could result in server-side request forgery (SSRF) attacks. Applications SHOULD protect against such attacks, e.g., by matching the URL to a whitelist of allowed locations and ensuring no cookies are sent in the GET request.
 
-11. Use Explicit Typing
+## 11. Use Explicit Typing
 
  Sometimes, one kind of JWT can be confused for another. If a particular kind of JWT is subject to such confusion, that JWT can include an explicit JWT type value, and the validation rules can specify checking the type. This mechanism can prevent such confusion. Explicit JWT typing is accomplished by using the "typ" Header Parameter. For instance, the [RFC8417] specification uses the "application/secevent+jwt" media type to perform explicit typing of Security Event Tokens (SETs).
 
@@ -68,7 +88,7 @@ Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with addit
 
  Note that the use of explicit typing may not achieve disambiguation from existing kinds of JWTs, as the validation rules for existing kinds of JWTs often do not use the "typ" Header Parameter value. Explicit typing is RECOMMENDED for new uses of JWTs.
 
-12.  Use Mutually Exclusive Validation Rules for Different Kinds of JWTs
+## 12.  Use Mutually Exclusive Validation Rules for Different Kinds of JWTs
 
  Each application of JWTs defines a profile specifying the required and optional JWT claims and the validation rules associated with them.  If more than one kind of JWT can be issued by the same issuer, the validation rules for those JWTs MUST be written such that they are mutually exclusive, rejecting JWTs of the wrong kind.  To prevent substitution of JWTs from one context into another, application developers may employ a number of strategies:
 
