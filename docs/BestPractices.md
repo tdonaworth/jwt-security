@@ -24,7 +24,7 @@
     3.  [Browser In-Memory](#browser-in-memory) - Sure, if you don't need to maintain auth on refresh.
     4.  [Cookies](#cookies) - Secure, if implemented correctly. Requires CSRF checks.
     5.  [Web Worker](#web-worker) - Secure, but non-persistent storage may limit this option.
-    6.  [BFF - Backend for Frontend](#bff---backend-for-frontend) - Effectively a backend proxy that handles all the token storage and exchange on behalf of the frontend; keeping any sensitive tokens out of the backend. Communication between the frontend/backend is handled with encrypted tokens and secure cookies;
+    6.  [BFF - Backend for Frontend](#bff---backend-for-frontend) - Effectively a backend proxy that handles all the token storage and exchange on behalf of the frontend; keeping any sensitive tokens out of the fronend. Communication between the frontend/backend is handled with encrypted tokens and secure cookies;
 
 
 Initial dump of [RFC8725](https://datatracker.ietf.org/doc/rfc8725/), with additional commentary added where it would make more sense or make the point clearer.
