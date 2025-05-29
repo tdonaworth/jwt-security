@@ -9,4 +9,5 @@ This is a collection of Best Practices and notes gathered from across the Intern
 3. [Best Practices](docs/BestPractices.md)
 4. [Additional Learning](docs/Learning.md)
 5. [JWT Attack Playbook](docs/AttackPlaybook.md)
+6. BONUS: [OAuth](docs/OAuth.md)
 
